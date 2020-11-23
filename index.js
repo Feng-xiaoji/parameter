@@ -61,6 +61,7 @@ class Parameter {
         message: this.t('the validated value should be a object'),
         code: this.t('invalid'),
         field: undefined,
+        type: 'rule',
       }];
     }
 
@@ -91,7 +92,8 @@ class Parameter {
           errors.push({
             message: this.t('required'),
             field: key,
-            code: this.t('missing_field')
+            code: this.t('missing_field'),
+            type: 'required',
           });
         }
         // support default value
@@ -115,6 +117,15 @@ class Parameter {
           code: this.t('invalid'),
           field: key
         });
+      }
+
+      if (typeof msg === 'object' && !Array.isArray(msg)) {
+        errors.push({
+          message: msg.message,
+          code: this.t('invalid'),
+          field: key,
+          type: msg.type,
+        })
       }
 
       if (Array.isArray(msg)) {
@@ -344,13 +355,22 @@ function checkInt(rule, value) {
 
 function checkNumber(rule, value) {
   if (typeof value !== 'number' || isNaN(value)) {
-    return this.t('should be a number');
+    return {
+      message: this.t('should be a number'),
+      type: 'number',
+    }
   }
   if (rule.hasOwnProperty('max') && value > rule.max) {
-    return this.t('should smaller than %s', rule.max);
+    return {
+      message: this.t('should smaller than %s', rule.max),
+      type: 'max',
+    };
   }
   if (rule.hasOwnProperty('min') && value < rule.min) {
-    return this.t('should bigger than %s', rule.min);
+    return {
+      message: this.t('should bigger than %s', rule.min),
+      type: 'min',
+    };
   }
 }
 
@@ -372,7 +392,10 @@ function checkNumber(rule, value) {
 
 function checkString(rule, value) {
   if (typeof value !== 'string') {
-    return this.t('should be a string');
+    return {
+      message: this.t('should be a string'),
+      type: 'string',
+    };
   }
 
   // if required === false, set allowEmpty to true by default
@@ -386,18 +409,30 @@ function checkString(rule, value) {
 
   if (!value) {
     if (allowEmpty) return;
-    return this.t('should not be empty');
+    return {
+      message: this.t('should not be empty'),
+      type: 'allowEmpty',
+    };
   }
 
   if (rule.hasOwnProperty('max') && value.length > rule.max) {
-    return this.t('length should smaller than %s', rule.max);
+    return {
+      message: this.t('length should smaller than %s', rule.max),
+      type: 'max',
+    };
   }
   if (rule.hasOwnProperty('min') && value.length < rule.min) {
-    return this.t('length should bigger than %s', rule.min);
+    return {
+      message: this.t('length should bigger than %s', rule.min),
+      type: 'min'
+    };
   }
 
   if (rule.format && !rule.format.test(value)) {
-    return rule.message || this.t('should match %s', rule.format);
+    return {
+      message: rule.message || this.t('should match %s', rule.format),
+      type: rule.type || 'test',
+    };
   }
 }
 
@@ -454,7 +489,10 @@ function checkDateTime(rule, value) {
 
 function checkBoolean(rule, value) {
   if (typeof value !== 'boolean') {
-    return this.t('should be a boolean');
+    return {
+      message: this.t('should be a boolean'),
+      type: 'boolean',
+    };
   }
 }
 
@@ -475,7 +513,10 @@ function checkEnum(rule, value) {
     throw new TypeError('check enum need array type values');
   }
   if (rule.values.indexOf(value) === -1) {
-    return this.t('should be one of %s', rule.values.join(', '));
+    return {
+      message: this.t('should be one of %s', rule.values.join(', ')),
+      type: 'enum',
+    };
   }
 }
 
@@ -492,6 +533,7 @@ function checkEmail(rule, value) {
   return checkString.call(this, {
     format: EMAIL_RE,
     message: rule.message || this.t('should be an email'),
+    type: 'email',
     allowEmpty: rule.allowEmpty,
   }, value);
 }
@@ -516,7 +558,10 @@ function checkPassword(rule, value, obj) {
     return error;
   }
   if (rule.compare && obj[rule.compare] !== value) {
-    return this.t('should equal to %s', rule.compare);
+    return {
+      message: this.t('should equal to %s', rule.compare),
+      rule: 'compare',
+    };
   }
 }
 
@@ -533,6 +578,7 @@ function checkUrl(rule, value) {
   return checkString.call(this, {
     format: URL_RE,
     message: rule.message || this.t('should be a url'),
+    type: 'url',
     allowEmpty: rule.allowEmpty
   }, value);
 }
@@ -551,7 +597,10 @@ function checkUrl(rule, value) {
 
 function checkObject(rule, value) {
   if (typeof value !== 'object') {
-    return this.t('should be an object');
+    return {
+      message: this.t('should be an object'),
+      type: 'object',
+    };
   }
 
   if (rule.rule) {
@@ -583,14 +632,23 @@ function checkObject(rule, value) {
 
 function checkArray(rule, value) {
   if (!Array.isArray(value)) {
-    return this.t('should be an array');
+    return {
+      message: this.t('should be an array'),
+      type: 'array',
+    };
   }
 
   if (rule.hasOwnProperty('max') && value.length > rule.max) {
-    return this.t('length should smaller than %s', rule.max);
+    return {
+      message: this.t('length should smaller than %s', rule.max),
+      type: 'max',
+    };
   }
   if (rule.hasOwnProperty('min') && value.length < rule.min) {
-    return this.t('length should bigger than %s', rule.min);
+    return {
+      message: this.t('length should bigger than %s', rule.min),
+      type: 'min',
+    };
   }
 
   if (!rule.itemType) {
@@ -619,6 +677,14 @@ function checkArray(rule, value) {
         message: errs,
         code: self.t('invalid')
       });
+    }
+    if (typeof errs === 'object' && !Array.isArray(errs)) {
+      errors.push({
+        field: index,
+        message: errs.message,
+        type: errs.type || '',
+        code: self.t('invalid');
+      })
     }
     if (Array.isArray(errs)) {
       errors = errors.concat(errs.map(function (e) {
