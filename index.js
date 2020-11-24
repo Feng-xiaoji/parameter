@@ -683,7 +683,7 @@ function checkArray(rule, value) {
         field: index,
         message: errs.message,
         type: errs.type || '',
-        code: self.t('invalid');
+        code: self.t('invalid'),
       })
     }
     if (Array.isArray(errs)) {
